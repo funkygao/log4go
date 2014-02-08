@@ -49,6 +49,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"time"
@@ -199,7 +200,7 @@ func (log Logger) intLogf(lvl level, format string, args ...interface{}) {
 	_, file, lineno, ok := runtime.Caller(2)
 	src := ""
 	if ok {
-		src = fmt.Sprintf("%s:%d", file, lineno)
+		src = fmt.Sprintf("%s:%d", filepath.Base(file), lineno)
 	}
 
 	msg := format
@@ -243,7 +244,7 @@ func (log Logger) intLogc(lvl level, closure func() string) {
 	_, file, lineno, ok := runtime.Caller(2)
 	src := ""
 	if ok {
-		src = fmt.Sprintf("%s:%d", file, lineno)
+		src = fmt.Sprintf("%s:%d", filepath.Base(file), lineno)
 	}
 
 	// Make the log record
