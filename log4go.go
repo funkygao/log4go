@@ -77,6 +77,8 @@ const (
 	WARNING
 	ERROR
 	CRITICAL
+
+	SRC_MAXLEN = 18
 )
 
 // Logging level strings
@@ -201,6 +203,10 @@ func (log Logger) intLogf(lvl level, format string, args ...interface{}) {
 	src := ""
 	if ok {
 		src = fmt.Sprintf("%s:%d", filepath.Base(file), lineno)
+		if len(src) > SRC_MAXLEN {
+			src = src[len(src)-SRC_MAXLEN:]
+		}
+		src = fmt.Sprintf("%*s", SRC_MAXLEN, src)
 	}
 
 	msg := format
@@ -245,6 +251,10 @@ func (log Logger) intLogc(lvl level, closure func() string) {
 	src := ""
 	if ok {
 		src = fmt.Sprintf("%s:%d", filepath.Base(file), lineno)
+		if len(src) > SRC_MAXLEN {
+			src = src[len(src)-SRC_MAXLEN:]
+		}
+		src = fmt.Sprintf("%*s", SRC_MAXLEN, src)
 	}
 
 	// Make the log record
