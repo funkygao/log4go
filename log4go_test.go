@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	slog "log"
 	"os"
 	"runtime"
 	"testing"
@@ -482,6 +483,18 @@ func BenchmarkFileLog(b *testing.B) {
 	b.StartTimer()
 	for i := 0; i < b.N; i++ {
 		sl.Log(WARNING, "here", "This is a log message")
+	}
+	b.StopTimer()
+	os.Remove("benchlog.log")
+}
+
+func BenchmarkDefaultLogFileLog(b *testing.B) {
+	b.StopTimer()
+	logfile, _ := os.Create("benchlog.log")
+	sl := slog.New(logfile, "", slog.LstdFlags)
+	b.StartTimer()
+	for i := 0; i < b.N; i++ {
+		sl.Println("This is a log message")
 	}
 	b.StopTimer()
 	os.Remove("benchlog.log")
