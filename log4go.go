@@ -76,6 +76,7 @@ const (
 	INFO
 	WARNING
 	ERROR
+	ALARM
 	CRITICAL
 
 	SRC_MAXLEN = 18
@@ -83,7 +84,7 @@ const (
 
 // Logging level strings
 var (
-	levelStrings = [...]string{"FNST", "FINE", "DEBG", "TRAC", "INFO", "WARN", "EROR", "CRIT"}
+	levelStrings = [...]string{"FNST", "FINE", "DEBG", "TRAC", "INFO", "WARN", "EROR", "ALRM", "CRIT"}
 )
 
 func (l level) String() string {
@@ -183,8 +184,8 @@ func (log Logger) AddFilter(name string, lvl level, writer LogWriter) Logger {
 }
 
 func (log Logger) DeleteFilter(name string) Logger {
-    delete(log, name)
-    return log
+	delete(log, name)
+	return log
 }
 
 /******* Logging *******/

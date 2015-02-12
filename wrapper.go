@@ -4,8 +4,8 @@ package log4go
 
 import (
 	"errors"
-	"os"
 	"fmt"
+	"os"
 	"strings"
 )
 
@@ -255,6 +255,24 @@ func Error(arg0 interface{}, args ...interface{}) error {
 		return errors.New(fmt.Sprint(first) + fmt.Sprintf(strings.Repeat(" %v", len(args)), args...))
 	}
 	return nil
+}
+
+func Alarm(arg0 interface{}, args ...interface{}) {
+	const (
+		lvl = ALARM
+	)
+	switch first := arg0.(type) {
+	case string:
+		// Use the string as a format string
+		Global.intLogf(lvl, first, args...)
+	case func() string:
+		// Log the closure (no other arguments used)
+		str := first()
+		Global.intLogf(lvl, "%s", str)
+	default:
+		// Build a format string so that it will be similar to Sprint
+		Global.intLogf(lvl, fmt.Sprint(first)+strings.Repeat(" %v", len(args)), args...)
+	}
 }
 
 // Utility for critical log messages (returns an error for easy function returns) (see Debug() for parameter explanation)
