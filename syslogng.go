@@ -20,6 +20,7 @@ func NewSyslogNgWriter(sockPath string, tag string) (w *SyslogNgWriter, err erro
 	w.tag = tag
 	w.ch = make(chan *LogRecord, LogBufferLength)
 	if w.conn, err = net.Dial("unix", sockPath); err != nil {
+		w.conn = nil
 		return
 	}
 
@@ -28,11 +29,18 @@ func NewSyslogNgWriter(sockPath string, tag string) (w *SyslogNgWriter, err erro
 }
 
 func (w SyslogNgWriter) LogWrite(rec *LogRecord) {
+	if w.conn == nil {
+		return
+	}
+
 	w.ch <- rec
 }
 
 func (w SyslogNgWriter) Close() {
 	close(w.ch)
+	if w.conn != nil {
+		w.conn.Close()
+	}
 }
 
 func (w SyslogNgWriter) run() {
