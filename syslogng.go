@@ -33,7 +33,10 @@ func (w SyslogNgWriter) LogWrite(rec *LogRecord) {
 		return
 	}
 
-	w.ch <- rec
+	select {
+	case w.ch <- rec:
+	default:
+	}
 }
 
 func (w SyslogNgWriter) Close() {
@@ -47,7 +50,7 @@ func (w SyslogNgWriter) run() {
 	var line string
 	for rec := range w.ch {
 		line = fmt.Sprintf("%s,%d,%s\n", w.tag, rec.Created.Unix(), rec.Message)
-		w.conn.SetWriteDeadline(time.Now().Add(time.Second * 2)) // loggr shouldn't block app
+		w.conn.SetWriteDeadline(time.Now().Add(time.Second * 2)) // logger shouldn't block app
 		w.conn.Write(hack.Byte(line))
 	}
 }
