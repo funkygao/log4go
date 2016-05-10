@@ -3,15 +3,16 @@
 package log4go
 
 import (
-	"os"
 	"fmt"
+	"os"
 	"time"
 )
 
 // This log writer sends output to a file
 type FileLogWriter struct {
-	rec chan *LogRecord
-	rot chan bool
+	rec             chan *LogRecord
+	rot             chan bool
+	discardWhenBusy bool
 
 	// The opened file
 	filename string
@@ -41,7 +42,15 @@ type FileLogWriter struct {
 
 // This is the FileLogWriter's output method
 func (w *FileLogWriter) LogWrite(rec *LogRecord) {
-	w.rec <- rec
+	if w.discardWhenBusy {
+		select {
+		case w.rec <- rec:
+		default:
+			// busy, maybe disk full
+		}
+	} else {
+		w.rec <- rec
+	}
 }
 
 func (w *FileLogWriter) Close() {
@@ -57,13 +66,14 @@ func (w *FileLogWriter) Close() {
 //
 // The standard log-line format is:
 //   [%D %T] [%L] (%S) %M
-func NewFileLogWriter(fname string, rotate bool) *FileLogWriter {
+func NewFileLogWriter(fname string, rotate bool, discardWhenBusy bool) *FileLogWriter {
 	w := &FileLogWriter{
-		rec:      make(chan *LogRecord, LogBufferLength),
-		rot:      make(chan bool),
-		filename: fname,
-		format:   "[%D %T] [%L] (%S) %M",
-		rotate:   rotate,
+		rec:             make(chan *LogRecord, LogBufferLength),
+		rot:             make(chan bool),
+		filename:        fname,
+		format:          "[%D %T] [%L] (%S) %M",
+		rotate:          rotate,
+		discardWhenBusy: discardWhenBusy,
 	}
 
 	// open the file for the first time
@@ -230,7 +240,7 @@ func (w *FileLogWriter) SetRotate(rotate bool) *FileLogWriter {
 // NewXMLLogWriter is a utility method for creating a FileLogWriter set up to
 // output XML record log messages instead of line-based ones.
 func NewXMLLogWriter(fname string, rotate bool) *FileLogWriter {
-	return NewFileLogWriter(fname, rotate).SetFormat(
+	return NewFileLogWriter(fname, rotate, false).SetFormat(
 		`	<record level="%L">
 		<timestamp>%D %T</timestamp>
 		<source>%S</source>
