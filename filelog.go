@@ -90,6 +90,10 @@ func NewFileLogWriter(fname string, rotate bool, discardWhenBusy bool) *FileLogW
 			}
 		}()
 
+		var (
+			lastRec       LogRecord
+			lastRepeatedN int
+		)
 		for {
 			select {
 			case <-w.rot:
@@ -97,11 +101,18 @@ func NewFileLogWriter(fname string, rotate bool, discardWhenBusy bool) *FileLogW
 					fmt.Fprintf(os.Stderr, "FileLogWriter(%q): %s\n", w.filename, err)
 					return
 				}
+
 			case rec, ok := <-w.rec:
 				if !ok {
 					return
 				}
-				now := time.Now()
+
+				if lastRec.Source == rec.Source && lastRec.Message == rec.Message {
+					lastRepeatedN++
+					continue
+				}
+
+				now := time.Now() // TODO do we need this? we have rec.Created
 				if (w.maxlines > 0 && w.maxlines_curlines >= w.maxlines) ||
 					(w.maxsize > 0 && w.maxsize_cursize >= w.maxsize) ||
 					(w.daily && now.Day() != w.daily_opendate) {
@@ -110,6 +121,17 @@ func NewFileLogWriter(fname string, rotate bool, discardWhenBusy bool) *FileLogW
 						return
 					}
 				}
+
+				if lastRepeatedN > 0 {
+					lastRec.Message = fmt.Sprintf("%d times: %s", lastRepeatedN, lastRec.Message)
+					if _, err := fmt.Fprint(w.file, FormatLogRecord(w.format, &lastRec)); err != nil {
+						fmt.Fprintf(os.Stderr, "FileLogWriter(%q): %s\n", w.filename, err)
+						return
+					}
+				}
+
+				lastRepeatedN = 0
+				lastRec = *rec
 
 				// Perform the write
 				n, err := fmt.Fprint(w.file, FormatLogRecord(w.format, rec))
