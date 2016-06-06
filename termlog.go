@@ -10,6 +10,8 @@ import (
 
 var stdout io.Writer = os.Stdout
 
+var consoleLogQuit = make(chan struct{})
+
 // This is the standard writer that prints to standard output.
 type ConsoleLogWriter chan *LogRecord
 
@@ -30,6 +32,9 @@ func (w ConsoleLogWriter) run(out io.Writer) {
 		}
 		fmt.Fprint(out, "[", timestr, "] [", levelStrings[rec.Level], "] (", rec.Source, ") ", rec.Message, "\n")
 	}
+
+	// inflight logs flushed, safe to quit
+	close(consoleLogQuit)
 }
 
 // This is the ConsoleLogWriter's output method.  This will block if the output
@@ -42,4 +47,7 @@ func (w ConsoleLogWriter) LogWrite(rec *LogRecord) {
 // send log messages to this logger after a Close have undefined behavior.
 func (w ConsoleLogWriter) Close() {
 	close(w)
+
+	// wait for inflight logs flush
+	<-consoleLogQuit
 }
