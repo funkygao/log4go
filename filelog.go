@@ -38,6 +38,8 @@ type FileLogWriter struct {
 
 	// Keep old logfiles (.001, .002, etc)
 	rotate bool
+
+	quit chan struct{}
 }
 
 // This is the FileLogWriter's output method
@@ -55,6 +57,9 @@ func (w *FileLogWriter) LogWrite(rec *LogRecord) {
 
 func (w *FileLogWriter) Close() {
 	close(w.rec)
+
+	// wait for inflight logs flush
+	<-w.quit
 }
 
 // NewFileLogWriter creates a new LogWriter which writes to the given file and
@@ -74,6 +79,7 @@ func NewFileLogWriter(fname string, rotate bool, discardWhenBusy bool) *FileLogW
 		format:          "[%D %T] [%L] (%S) %M",
 		rotate:          rotate,
 		discardWhenBusy: discardWhenBusy,
+		quit:            make(chan struct{}),
 	}
 
 	// open the file for the first time
@@ -104,6 +110,7 @@ func NewFileLogWriter(fname string, rotate bool, discardWhenBusy bool) *FileLogW
 
 			case rec, ok := <-w.rec:
 				if !ok {
+					close(w.quit)
 					return
 				}
 
