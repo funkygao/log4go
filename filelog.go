@@ -16,6 +16,7 @@ type FileLogWriter struct {
 
 	// The opened file
 	filename string
+	perm     os.FileMode
 	file     *os.File
 
 	// The logging format
@@ -71,7 +72,7 @@ func (w *FileLogWriter) Close() {
 //
 // The standard log-line format is:
 //   [%D %T] [%L] (%S) %M
-func NewFileLogWriter(fname string, rotate bool, discardWhenBusy bool) *FileLogWriter {
+func NewFileLogWriter(fname string, rotate bool, discardWhenBusy bool, perm os.FileMode) *FileLogWriter {
 	w := &FileLogWriter{
 		rec:             make(chan *LogRecord, LogBufferLength),
 		rot:             make(chan bool),
@@ -79,7 +80,11 @@ func NewFileLogWriter(fname string, rotate bool, discardWhenBusy bool) *FileLogW
 		format:          "[%D %T] [%L] (%S) %M",
 		rotate:          rotate,
 		discardWhenBusy: discardWhenBusy,
+		perm:            perm,
 		quit:            make(chan struct{}),
+	}
+	if w.perm == 0 {
+		w.perm = 0660 // default
 	}
 
 	// open the file for the first time
@@ -195,7 +200,7 @@ func (w *FileLogWriter) intRotate() error {
 	}
 
 	// Open the log file
-	fd, err := os.OpenFile(w.filename, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0660)
+	fd, err := os.OpenFile(w.filename, os.O_WRONLY|os.O_APPEND|os.O_CREATE, w.perm)
 	if err != nil {
 		return err
 	}
@@ -269,7 +274,7 @@ func (w *FileLogWriter) SetRotate(rotate bool) *FileLogWriter {
 // NewXMLLogWriter is a utility method for creating a FileLogWriter set up to
 // output XML record log messages instead of line-based ones.
 func NewXMLLogWriter(fname string, rotate bool) *FileLogWriter {
-	return NewFileLogWriter(fname, rotate, false).SetFormat(
+	return NewFileLogWriter(fname, rotate, false, 0).SetFormat(
 		`	<record level="%L">
 		<timestamp>%D %T</timestamp>
 		<source>%S</source>

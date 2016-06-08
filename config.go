@@ -167,6 +167,7 @@ func strToNumSuffix(str string, mult int) int {
 	parsed, _ := strconv.Atoi(str)
 	return parsed * num
 }
+
 func xmlToFileLogWriter(filename string, props []xmlProperty, enabled bool) (*FileLogWriter, bool) {
 	file := ""
 	format := "[%D %T] [%L] (%S) %M"
@@ -206,7 +207,7 @@ func xmlToFileLogWriter(filename string, props []xmlProperty, enabled bool) (*Fi
 		return nil, true
 	}
 
-	flw := NewFileLogWriter(file, rotate, false)
+	flw := NewFileLogWriter(file, rotate, false, 0)
 	flw.SetFormat(format)
 	flw.SetRotateLines(maxlines)
 	flw.SetRotateSize(maxsize)
