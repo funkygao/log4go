@@ -53,7 +53,7 @@ func (w *FileLogWriter) LogWrite(rec *LogRecord) {
 		select {
 		case w.rec <- rec:
 		default:
-			// busy, maybe disk full
+			// busy: maybe disk full or chan buffer full
 		}
 	} else {
 		w.rec <- rec
@@ -102,6 +102,8 @@ func NewFileLogWriter(fname string, rotate bool, discardWhenBusy bool, perm os.F
 			if w.file != nil {
 				fmt.Fprint(w.file, FormatLogRecord(w.trailer, &LogRecord{Created: time.Now()}))
 				w.file.Close()
+
+				close(w.quit)
 			}
 		}()
 
@@ -119,7 +121,12 @@ func NewFileLogWriter(fname string, rotate bool, discardWhenBusy bool, perm os.F
 
 			case rec, ok := <-w.rec:
 				if !ok {
-					close(w.quit)
+					// flush the last repeating entries if present
+					if lastRepeatedN > 0 {
+						lastRec.Message = fmt.Sprintf("%d times: %s", lastRepeatedN, lastRec.Message)
+						fmt.Fprint(w.file, FormatLogRecord(w.format, &lastRec))
+					}
+
 					return
 				}
 
