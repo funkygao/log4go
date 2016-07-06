@@ -40,6 +40,10 @@ type FileLogWriter struct {
 	// Keep old logfiles (.001, .002, etc)
 	rotate bool
 
+	// GC old logfiles older than
+	// <=0 means never GC
+	rotateKeepDuration time.Duration
+
 	quit chan struct{}
 }
 
@@ -177,14 +181,22 @@ func (w *FileLogWriter) intRotate() error {
 
 	// If we are keeping log files, move it to the next available number
 	if w.rotate {
-		_, err := os.Lstat(w.filename)
+		var (
+			err  error
+			stat os.FileInfo
+		)
+		_, err = os.Lstat(w.filename)
 		if err == nil { // file exists
 			// Find the next available number
 			num := 1
 			fname := ""
 			for ; err == nil && num <= 999; num++ {
 				fname = w.filename + fmt.Sprintf(".%03d", num)
-				_, err = os.Lstat(fname)
+				stat, err = os.Lstat(fname)
+				if err == nil && w.rotateKeepDuration > 0 && time.Since(stat.ModTime()) > w.rotateKeepDuration {
+					// GC
+					os.Remove(fname)
+				}
 			}
 			// return error if the last file checked still existed
 			if err == nil {
@@ -242,6 +254,11 @@ func (w *FileLogWriter) SetHeadFoot(head, foot string) *FileLogWriter {
 func (w *FileLogWriter) SetRotateLines(maxlines int) *FileLogWriter {
 	//fmt.Fprintf(os.Stderr, "FileLogWriter.SetRotateLines: %v\n", maxlines)
 	w.maxlines = maxlines
+	return w
+}
+
+func (w *FileLogWriter) SetRotateKeepDuration(d time.Duration) *FileLogWriter {
+	w.rotateKeepDuration = d
 	return w
 }
 
