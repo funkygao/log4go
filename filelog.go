@@ -195,23 +195,28 @@ func (w *FileLogWriter) intRotate() error {
 		_, err = os.Lstat(w.filename)
 		if err == nil { // file exists
 			// Find the next available number
-			num := 1
-			fname := ""
-			for ; err == nil && num <= 999; num++ {
-				fname = w.filename + fmt.Sprintf(".%03d", num)
-				stat, err = os.Lstat(fname)
+			backup := ""
+			for num := 1; num <= 999; num++ {
+				fn := w.filename + fmt.Sprintf(".%03d", num)
+				stat, err = os.Lstat(fn)
+				if err != nil && backup == "" {
+					// bingo! use this as backup of the running log
+					backup = fn
+				}
+
+				// even when we find the next available number, we still continue to delete each outdated logs
 				if err == nil && w.rotateKeepDuration > 0 && time.Since(stat.ModTime()) > w.rotateKeepDuration {
 					// GC
-					os.Remove(fname)
+					os.Remove(fn)
 				}
 			}
 			// return error if the last file checked still existed
-			if err == nil {
+			if backup == "" {
 				return fmt.Errorf("Rotate: Cannot find free log number to rename %s\n", w.filename)
 			}
 
 			// Rename the file to its newfound home
-			err = os.Rename(w.filename, fname)
+			err = os.Rename(w.filename, backup)
 			if err != nil {
 				return fmt.Errorf("Rotate: %s\n", err)
 			}
