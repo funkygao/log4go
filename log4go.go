@@ -169,9 +169,9 @@ func NewDefaultLogger(lvl Level) Logger {
 // all filters (and thus all LogWriters) from the logger.
 func (log Logger) Close() {
 	// Close all open loggers
-	for name, filt := range log {
+	for _, filt := range log {
 		filt.Close()
-		delete(log, name)
+		//delete(log, name) // race condition with intLogf() dispatch log
 	}
 }
 
