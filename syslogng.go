@@ -39,6 +39,7 @@ func (w SyslogNgWriter) LogWrite(rec *LogRecord) {
 	}
 }
 
+// Caution: call LogWrite after Close will panic: send on closed channel
 func (w SyslogNgWriter) Close() {
 	close(w.ch)
 	if w.conn != nil {

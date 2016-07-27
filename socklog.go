@@ -20,6 +20,7 @@ func (w SocketLogWriter) LogWrite(rec *LogRecord) {
 	}
 }
 
+// Caution: call LogWrite after Close will panic: send on closed channel
 func (w SocketLogWriter) Close() {
 	close(w)
 }

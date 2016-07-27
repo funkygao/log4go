@@ -60,6 +60,7 @@ func (w *FileLogWriter) LogWrite(rec *LogRecord) {
 	}
 }
 
+// Caution: call LogWrite after Close will panic: send on closed channel
 func (w *FileLogWriter) Close() {
 	close(w.rec)
 
