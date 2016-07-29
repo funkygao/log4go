@@ -10,23 +10,27 @@ import (
 
 var stdout io.Writer = os.Stdout
 
-var consoleLogQuit = make(chan struct{})
-
 // This is the standard writer that prints to standard output.
-type ConsoleLogWriter chan *LogRecord
-
-// This creates a new ConsoleLogWriter
-func NewConsoleLogWriter() ConsoleLogWriter {
-	records := make(ConsoleLogWriter, LogBufferLength)
-	go records.run(stdout)
-	return records
+type ConsoleLogWriter struct {
+	records chan *LogRecord
+	flushed chan struct{}
 }
 
-func (w ConsoleLogWriter) run(out io.Writer) {
+// This creates a new ConsoleLogWriter
+func NewConsoleLogWriter() *ConsoleLogWriter {
+	writer := &ConsoleLogWriter{
+		records: make(chan *LogRecord, LogBufferLength),
+		flushed: make(chan struct{}),
+	}
+	go writer.run(stdout)
+	return writer
+}
+
+func (w *ConsoleLogWriter) run(out io.Writer) {
 	var timestr string
 	var timestrAt int64
 
-	for rec := range w {
+	for rec := range w.records {
 		if at := rec.Created.UnixNano() / 1e9; at != timestrAt {
 			timestr, timestrAt = rec.Created.Format("01/02/06 15:04:05"), at
 		}
@@ -34,22 +38,22 @@ func (w ConsoleLogWriter) run(out io.Writer) {
 	}
 
 	// inflight logs flushed, safe to quit
-	close(consoleLogQuit)
+	close(w.flushed)
 }
 
 // This is the ConsoleLogWriter's output method.  This will block if the output
 // buffer is full.
-func (w ConsoleLogWriter) LogWrite(rec *LogRecord) {
-	w <- rec
+func (w *ConsoleLogWriter) LogWrite(rec *LogRecord) {
+	w.records <- rec
 }
 
 // Close stops the logger from sending messages to standard output.  Attempts to
 // send log messages to this logger after a Close have undefined behavior.
 //
 // Caution: call LogWrite after Close will panic: send on closed channel
-func (w ConsoleLogWriter) Close() {
-	close(w)
+func (w *ConsoleLogWriter) Close() {
+	close(w.records)
 
 	// wait for inflight logs flush
-	<-consoleLogQuit
+	<-w.flushed
 }
