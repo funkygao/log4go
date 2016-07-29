@@ -184,7 +184,10 @@ func (log Logger) AddFilter(name string, lvl Level, writer LogWriter) Logger {
 }
 
 func (log Logger) DeleteFilter(name string) Logger {
-	delete(log, name)
+	if filter, present := log[name]; present {
+		filter.Close()
+		delete(log, name)
+	}
 	return log
 }
 
