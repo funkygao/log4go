@@ -32,6 +32,15 @@ func DeleteFilter(name string) {
 	Global.DeleteFilter(name)
 }
 
+// Disable turns off all log writers
+//
+// Usually used when you run log4go dependent benchmark tests
+func Disable() {
+	for filter := range Global {
+		Global.DeleteFilter(filter)
+	}
+}
+
 // Wrapper for (*Logger).Close (closes and removes all logwriters)
 func Close() {
 	Global.Close()
