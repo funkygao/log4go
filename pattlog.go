@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"sync"
 )
 
 const (
@@ -20,7 +21,10 @@ type formatCacheType struct {
 	longTime, longDate   string
 }
 
-var formatCache = &formatCacheType{}
+var (
+	formatCache     = &formatCacheType{}
+	formatCacheLock sync.RWMutex
+)
 
 // Known format codes:
 // %T - Time (15:04:05 MST)
@@ -43,20 +47,28 @@ func FormatLogRecord(format string, rec *LogRecord) string {
 	out := bytes.NewBuffer(make([]byte, 0, 64))
 	secs := rec.Created.UnixNano() / 1e9
 
+	formatCacheLock.RLock()
 	cache := *formatCache
+	formatCacheLock.RUnlock()
 	if cache.LastUpdateSeconds != secs {
-		month, day, year := rec.Created.Month(), rec.Created.Day(), rec.Created.Year()
-		hour, minute, second := rec.Created.Hour(), rec.Created.Minute(), rec.Created.Second()
-		zone, _ := rec.Created.Zone()
-		updated := &formatCacheType{
-			LastUpdateSeconds: secs,
-			shortTime:         fmt.Sprintf("%02d:%02d", hour, minute),
-			shortDate:         fmt.Sprintf("%02d/%02d/%02d", month, day, year%100),
-			longTime:          fmt.Sprintf("%02d:%02d:%02d %s", hour, minute, second, zone),
-			longDate:          fmt.Sprintf("%04d/%02d/%02d", year, month, day),
+		// double check lock
+		formatCacheLock.Lock()
+		cache = *formatCache
+		if cache.LastUpdateSeconds != secs {
+			month, day, year := rec.Created.Month(), rec.Created.Day(), rec.Created.Year()
+			hour, minute, second := rec.Created.Hour(), rec.Created.Minute(), rec.Created.Second()
+			zone, _ := rec.Created.Zone()
+			updated := &formatCacheType{
+				LastUpdateSeconds: secs,
+				shortTime:         fmt.Sprintf("%02d:%02d", hour, minute),
+				shortDate:         fmt.Sprintf("%02d/%02d/%02d", month, day, year%100),
+				longTime:          fmt.Sprintf("%02d:%02d:%02d %s", hour, minute, second, zone),
+				longDate:          fmt.Sprintf("%04d/%02d/%02d", year, month, day),
+			}
+			cache = *updated
+			formatCache = updated
 		}
-		cache = *updated
-		formatCache = updated
+		formatCacheLock.Unlock()
 	}
 
 	// Split the string into pieces by % signs
