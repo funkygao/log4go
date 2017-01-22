@@ -137,10 +137,7 @@ type Filter struct {
 type Logger map[string]*Filter
 
 // Create a new logger.
-//
-// DEPRECATED: Use make(Logger) instead.
 func NewLogger() Logger {
-	os.Stderr.WriteString("warning: use of deprecated NewLogger\n")
 	return make(Logger)
 }
 
