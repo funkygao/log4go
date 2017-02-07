@@ -32,6 +32,12 @@ func DeleteFilter(name string) {
 	Global.DeleteFilter(name)
 }
 
+func SetLevel(lvl Level) {
+	for _, filter := range Global {
+		filter.Level = lvl
+	}
+}
+
 // Disable turns off all log writers
 //
 // Usually used when you run log4go dependent benchmark tests
