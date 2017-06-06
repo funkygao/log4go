@@ -125,6 +125,7 @@ func NewFileLogWriter(fname string, rotate bool, discardWhenBusy bool, perm os.F
 					// flush the last repeating entries if present
 					if lastRepeatedN > 0 {
 						lastRec.Message = fmt.Sprintf("%d times: %s", lastRepeatedN, lastRec.Message)
+						lastRec.Created = time.Now()
 						fmt.Fprint(w.file, FormatLogRecord(w.format, &lastRec))
 					}
 
@@ -148,6 +149,7 @@ func NewFileLogWriter(fname string, rotate bool, discardWhenBusy bool, perm os.F
 
 				if lastRepeatedN > 0 {
 					lastRec.Message = fmt.Sprintf("%d times: %s", lastRepeatedN, lastRec.Message)
+					lastRec.Created = now
 					if _, err := fmt.Fprint(w.file, FormatLogRecord(w.format, &lastRec)); err != nil {
 						fmt.Fprintf(os.Stderr, "FileLogWriter(%q): %s\n", w.filename, err)
 						return
